@@ -1,32 +1,17 @@
 package com.example.aufgabe3.ui.add
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.example.aufgabe3.model.BookingEntry
 import com.example.aufgabe3.viewmodel.SharedViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -42,6 +27,7 @@ fun AddScreen(
     var departureDate by remember { mutableStateOf<LocalDate?>(null) }
 
     var showDateRangePicker by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
@@ -99,7 +85,17 @@ fun AddScreen(
 
             Button(
                 onClick = {
-                    // TODO Error handling and creating new BookingEntry and save in sharedViewModel
+                    if (name.isBlank() || arrivalDate == null || departureDate == null) {
+                        Toast.makeText(context, "All fields are required!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val bookingEntry = BookingEntry(
+                            name = name,
+                            arivalDate = arrivalDate!!,
+                            departureDate = departureDate!!
+                        )
+                        sharedViewModel.addBookingEntry(bookingEntry)
+                        navController.popBackStack()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -108,11 +104,44 @@ fun AddScreen(
         }
     }
 
-    // TODO implement DateRangePicker Dialog logic
+    if (showDateRangePicker) {
+        DateRangePickerModal(
+            onDismissRequest = { showDateRangePicker = false },
+            onDateSelected = { startDate, endDate ->
+                arrivalDate = startDate
+                departureDate = endDate
+                showDateRangePicker = false
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateRangePickerModal(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (LocalDate, LocalDate) -> Unit
 ) {
-    // TODO implement DateRangePicker see https://developer.android.com/develop/ui/compose/components/datepickers?hl=de
+    val datePickerState = rememberDateRangePickerState()
+    DatePickerDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = {
+                if (datePickerState.selectedStartDateMillis != null && datePickerState.selectedEndDateMillis != null) {
+                    val startDate = LocalDate.ofEpochDay(datePickerState.selectedStartDateMillis!! / 86400000)
+                    val endDate = LocalDate.ofEpochDay(datePickerState.selectedEndDateMillis!! / 86400000)
+                    onDateSelected(startDate, endDate)
+                }
+            }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        DateRangePicker(state = datePickerState)
+    }
 }
